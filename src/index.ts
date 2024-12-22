@@ -1,55 +1,37 @@
 import { Effect } from "effect";
 
-const divide = (a: number, b: number): Effect.Effect<number, Error> =>
-    b === 0
-        ? Effect.fail(new Error("Cannot divide by zero"))
-        : Effect.succeed(a / b);
-try {
-    console.log(Effect.runSync(divide(4, 0)));
-} catch (error) {
-    console.error(error);
+const delay = (message: string) => {
+    return Effect.promise<string>(() => {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve(message);
+            }, 2000);
+        });
+    });
 }
 
-interface User {
-    readonly id: number;
-    readonly name: string;
-}
+const program1 = delay("Async operation completed successfully!");
 
-const getUser = (userId: number): Effect.Effect<User, Error> => {
-    const userDatabase: Record<number, User> = {
-        1: { id: 1, name: "John Doe" },
-        2: { id: 2, name: "Jane Smith" }
-    }
+const res1 = await Effect.runPromise(program1);
+console.log(res1);
 
-    const user = userDatabase[userId];
-    if (user) {
-        return Effect.succeed(user);
-    } else {
-        return Effect.fail(new Error("User not found"));
-    }
-}
 
-const exampleUserEffect = getUser(1);
-console.log(Effect.runSync(exampleUserEffect));
-
-const log = (message: string) => {
-    return Effect.sync(() => {
-        console.log(message);
-    })
-}
-
-const program1 = log('hello world!');
-Effect.runSync(program1);
-
-const parse = (input: string) =>
-    Effect.try({
-        // JSON.parse may throw for bad input
-        try: () => JSON.parse(input),
+const getTodo = (id: number) => {
+    // Will catch any errors and propagate them as UnknownException
+    return Effect.tryPromise({
+        try: () => fetch(`https://jsonplaceholder.typicode.com/todos/${id}`),
         // remap the error
         catch: (unknown) => new Error(`something went wrong ${unknown}`)
     })
+}
 
-//      ┌─── Effect<any, Error, never>
+//      ┌─── Effect<Response, UnknownException, never>
 //      ▼
-const program2 = parse("");
-Effect.runSync(program2);
+const program2 = getTodo(999999);
+try {
+    const res2 = await Effect.runPromise(program2);
+    const data = await res2.json();
+    console.log(data);
+} catch (error) {
+    console.error(error);
+}
